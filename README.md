@@ -1,5 +1,4 @@
-# bypassvillage
-DEFCON 27 Lock Bypass Village
+# Lock Bypass Village
 
 This is some simple Arduino code I threw together in an afternoon in order to run a small control system for a demo at DEFCON 27's Lock Bypass Village.
 
