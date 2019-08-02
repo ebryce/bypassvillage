@@ -15,6 +15,7 @@
 #define pDRS 13 // Door state senor
 #define pWLC 11 // Wheelchair button
 #define pMAG 2  // Magstrike control
+#define pALM 8  // The fire alarm
 
 #define msLoop 100            // ms per control loop
 
@@ -32,17 +33,17 @@ int doorState;    // 1=door is open           0=door is closed
 int fireState;    // 1=building is on fire    0=building is extinguished
 int tamperState;  // 1=device is opened       0=device is sealed
 
-int noteBeep; 
+int noteBeep;
 
 void setup() {
   Serial.begin(9600);
   Serial.println("Starting");
-  
+
   pinMode(pBEP, OUTPUT);  // Beep
   pinMode(pGRN, OUTPUT);  // Green LED
   pinMode(pRED, OUTPUT);  // Red LED
   pinMode(pMAG, OUTPUT);  // Magstrike relay control
-  
+
   pinMode(pTMP, INPUT);   // Tamper evident sensor
   pinMode(pCLK, INPUT);   // Weigand clock
   pinMode(pDTA, INPUT);   // Weigand data
@@ -50,9 +51,10 @@ void setup() {
   pinMode(pIO2, INPUT);   // Prox card date
   pinMode(pIO3, INPUT);   // Prox card data
   pinMode(pIO4, INPUT);   // Prox card date
-  
+
   pinMode(pDRS, INPUT);   // Door state
   pinMode(pWLC, INPUT);   // Door state
+  pinMode(pALM, INPUT);   // Fire alarm state
 
   digitalWrite(pGRN, HIGH);
   digitalWrite(pRED, HIGH);
@@ -67,7 +69,7 @@ void setup() {
   msWheelchair = 0; // Wheelchair button not active
 
   noteBeep = 0;
-  
+
   attachInterrupt(iCLK, unlockFob, FALLING);  // On Fob activation, cluck
 }
 
@@ -113,7 +115,18 @@ void loop() {
       { Serial.println("Wheelchair button pressed"); }
     msWheelchair = msWheelchairLim;
   }
-  
+
+  if (digitalRead(pALM)==0)
+  { // If the fire alarm is tripped
+    if (fireState==0) { Serial.println("Fire alarm tripped"); }
+    fireState = 1;
+  }
+  else
+  { // if the fire alarm is off
+    if (fireState==1) { Serial.println("Fire alarm reset"); }
+    fireState = 0;
+  }
+
   if ((msWheelchair <= msLoop) & (msWheelchair > 0)) { Serial.println("Wheelchair unlock expiring"); }
   msWheelchair -= msLoop;
   if (msWheelchair < 0) {msWheelchair=0;}
@@ -124,8 +137,8 @@ void loop() {
   if (msFob < 0) {msFob=0;}
 
   // Check if the door should be locked
-  if (( (msWheelchair > 0) | (msFob > 0) | (fireState > 0) ) 
-       & (tamperState==0) // Uncomment to forbid unlocking while tampered
+  if (( (msWheelchair > 0) | (msFob > 0) | (fireState > 0) )
+       & ((tamperState==0) | (fireState>0)) // Uncomment to forbid unlocking while tampered
        //& (doorState==0)  // Uncomment to forbid unlocking while door is open
       )
   { // Unlocked
@@ -135,7 +148,7 @@ void loop() {
     digitalWrite(pRED, HIGH); // Red off
     digitalWrite(pBEP, HIGH); // No beep
     digitalWrite(pMAG, LOW); // Unlock
-  }  
+  }
   else
   { // Locked
     if (lockState==1)
@@ -146,7 +159,7 @@ void loop() {
     digitalWrite(pRED, LOW);  // Red on
     digitalWrite(pBEP, HIGH); // No beep
     digitalWrite(pMAG, HIGH);  // Lock
-  }  
+  }
 
   // Check whether the door is open
   // n.b., the switch is 0 when door is open, 1 when door is closed
@@ -155,7 +168,7 @@ void loop() {
   {
     if (doorState==1){ Serial.println("Door closing");noteBeep = 1; }
     doorState=0;
-  } 
+  }
   else
   {
     if (doorState==0){
